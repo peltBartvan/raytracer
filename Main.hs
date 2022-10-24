@@ -98,6 +98,14 @@ coloredFilter (r', g', b') scene = \ray -> let (r, g, b) = scene ray in (r' * r,
 setColor :: Color -> Optic
 setColor color scene = \ray -> color
 
+-- This probably isn't right..
+-- Should get some sleep and think about this again
+-- right now it's translating only the ray, not the scene
+-- this might be fine, if ray translation is the opposite of scene translation
+-- let's sleep on it, nice to start with a useful translation primitive
+translate :: Float -> Float -> Optic
+translate dx dy scene = \ray -> scene ray {x = dx + x ray, y = dy + y ray}
+
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
@@ -107,5 +115,5 @@ main = do
   savePngImage "helloworld.png" $ camera world
   savePngImage "helloworld_filtered.png" $ (camera . redFilter) world
   savePngImage "helloworld_lensed.png" $ (camera . (propagate 5) . (thinLens 10)) world
-  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5) . (joinOptics (\ray -> 0 < x ray) ((thinLens 10) . redFilter) id)) world
+  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5) . (translate 1 1) . (joinOptics (\ray -> 0 < x ray) ((thinLens 10) . redFilter) id)) world
 
