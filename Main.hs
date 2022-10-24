@@ -73,34 +73,39 @@ world ray
   | dydz ray < 0.5 = (60 , 120, 50 ) -- covered in lovely dark green foliage
   | otherwise      = (90 , 192, 230) -- under a bright blue sky
 
-redFilter :: Optic
-redFilter scene = \ray -> let (r, g, b) = scene ray in (r, 0, 0)
 
+-- Generates an ideal thin lens, working in the paraxial approximation
 thinLens :: Float -> Optic
 thinLens focalDistance scene = \ray -> scene $ ray { dxdz = (dxdz ray) - (x ray)/focalDistance
                                                    , dydz = (dydz ray) - (y ray)/focalDistance}
 
+-- paraxial propagator
 propagate :: Float -> Optic
 propagate distance scene = \ray -> scene $ ray { x = (x ray) + distance*(dxdz ray)
                                                , y = (y ray) + distance*(dydz ray)}
 
+-- Sometimes we want the ray to be processed differently depending on its position
+-- This function lets us combine different optics while differentiating the rays by a supplied predicate
 joinOptics :: (Ray -> Bool) -> Optic -> Optic -> Optic
 joinOptics predicate ifTrue ifFalse scene = \ray -> 
   if predicate ray then (ifTrue scene) ray else (ifFalse scene) ray
 
-setColor :: Color -> Optic
-setColor color scene = \ray -> color
-
+-- Color filters are nice
 coloredFilter :: Color -> Optic
 coloredFilter (r', g', b') scene = \ray -> let (r, g, b) = scene ray in (r' * r, g' * g, b' * b)
+
+-- Just give a ray a given color, no further evaluation needed!
+setColor :: Color -> Optic
+setColor color scene = \ray -> color
 
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
   let camera = pinhole 1.1 1.1 200 200
+  let redFilter = coloredFilter (1, 0, 0)
   savePngImage "whitescreen.png" (whitescreen black)
   savePngImage "helloworld.png" $ camera world
   savePngImage "helloworld_filtered.png" $ (camera . redFilter) world
   savePngImage "helloworld_lensed.png" $ (camera . (propagate 5) . (thinLens 10)) world
-  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5) . (joinOptics (\ray -> 0 < x ray) ((thinLens 10) . (coloredFilter (1, 0, 0))) id)) world
-	
+  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5) . (joinOptics (\ray -> 0 < x ray) ((thinLens 10) . redFilter) id)) world
+
