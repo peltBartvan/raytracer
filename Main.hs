@@ -34,6 +34,7 @@ type Optic = Scene -> Scene
 (<|)  :: Observer -> Optic -> Observer
 -- Would be nice if everything can just be function composition
 -- Wishful thinking?
+-- Seems like this actually works, nice!
 (<|) = (.)
 
 -- Change a Scene by prepending some optical element
@@ -75,12 +76,31 @@ world ray
 redFilter :: Optic
 redFilter scene = \ray -> let (r, g, b) = scene ray in (r, 0, 0)
 
+thinLens :: Float -> Optic
+thinLens focalDistance scene = \ray -> scene $ ray { dxdz = (dxdz ray) - (x ray)/focalDistance
+                                                   , dydz = (dydz ray) - (y ray)/focalDistance}
+
+propagate :: Float -> Optic
+propagate distance scene = \ray -> scene $ ray { x = (x ray) + distance*(dxdz ray)
+                                               , y = (y ray) + distance*(dydz ray)}
+
+joinOptics :: (Ray -> Bool) -> Optic -> Optic -> Optic
+joinOptics predicate ifTrue ifFalse scene = \ray -> 
+  if predicate ray then (ifTrue scene) ray else (ifFalse scene) ray
+
+setColor :: Color -> Optic
+setColor color scene = \ray -> color
+
+coloredFilter :: Color -> Optic
+coloredFilter (r', g', b') scene = \ray -> let (r, g, b) = scene ray in (r' * r, g' * g, b' * b)
 
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
-  let camera = pinhole 1.0 1.0 200 200
+  let camera = pinhole 1.1 1.1 200 200
   savePngImage "whitescreen.png" (whitescreen black)
   savePngImage "helloworld.png" $ camera world
   savePngImage "helloworld_filtered.png" $ (camera . redFilter) world
+  savePngImage "helloworld_lensed.png" $ (camera . (propagate 5) . (thinLens 10)) world
+  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5) . (joinOptics (\ray -> 0 < x ray) ((thinLens 10) . (coloredFilter (1, 0, 0))) id)) world
 	
