@@ -29,23 +29,6 @@ type Scene = Ray -> Color
 type Observer = Scene -> DynamicImage
 type Optic = Scene -> Scene
 
--- Attach an optical element to an Observer
--- A camera with a lens is still a camera
-(<|)  :: Observer -> Optic -> Observer
--- Would be nice if everything can just be function composition
--- Wishful thinking?
--- Seems like this actually works, nice!
-(<|) = (.)
-
--- Change a Scene by prepending some optical element
-(|>)  :: Optic -> Scene -> Scene
-opt |> scene = opt scene
-
--- A combination of optical elements is itself an optical element, they should be combinable
-(<|>) :: Optic -> Optic -> Optic
--- Not sure about this, the types check, does this need to be flip (.)?
-(<|>) = (.)
-
 -- Let's start by staring into space
 black :: Scene
 black = const (0x00, 0x00, 0x00)
@@ -115,5 +98,5 @@ main = do
   savePngImage "helloworld.png" $ camera world
   savePngImage "helloworld_filtered.png" $ (camera . redFilter) world
   savePngImage "helloworld_lensed.png" $ (camera . (propagate 5) . (thinLens 10)) world
-  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5) . (translate 1 1) . (joinOptics (\ray -> 0 < x ray) ((thinLens 10) . redFilter) id)) world
+  savePngImage "helloworld_lensed_half.png" $ (camera . (propagate 5)  . (joinOptics (\ray -> 0 < x ray) ((thinLens 15) . (propagate 5) . (thinLens 15) . redFilter) id)) world
 
